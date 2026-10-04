@@ -1,0 +1,36 @@
+{
+  "title": "Protocole de métrologie expérimentale : Infomécanodynamique et science du distonique distinctif",
+  "description": "Protocole expérimental complet pour tester l'effondrement d'impédance informationnelle sous posture participante (β → 0). Inclut : préprint LaTeX, pré-enregistrement, pipeline Python (génération, métriques, analyse statistique fréquentiste et bayésienne), protocole physique (bruit Johnson-Nyquist, magnétométrie NV), dashboard Streamlit, simulateur de données synthétiques, tests unitaires, Docker, CI et scripts d'exécution.",
+  "creators": [
+    {
+      "name": "Vallerand, Alexandre",
+      "affiliation": "Independent Researcher"
+    }
+  ],
+  "keywords": [
+    "infomechanodynamics",
+    "distonic science",
+    "informational impedance",
+    "endo-modeling",
+    "beta parameter",
+    "logit entropy",
+    "semantic pressure",
+    "NV magnetometry",
+    "Johnson-Nyquist noise",
+    "Popperian falsification",
+    "AI metrology"
+  ],
+  "license": "MIT",
+  "upload_type": "software",
+  "access_right": "open",
+  "language": "fra",
+  "version": "1.0.0",
+  "publication_date": "2026-10-04",
+  "related_identifiers": [
+    {
+      "identifier": "10.5281/zenodo.22969532",
+      "relation": "isSupplementTo",
+      "resource_type": "publication-article"
+    }
+  ]
+}

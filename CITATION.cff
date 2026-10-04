@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "Si vous utilisez ce protocole, veuillez le citer."
+title: "Protocole de métrologie expérimentale : Infomécanodynamique et science du distonique distinctif"
+authors:
+  - family-names: Vallerand
+    given-names: Alexandre
+    affiliation: "Independent Researcher"
+version: "1.0.0"
+date-released: "2026-10-04"
+license: MIT

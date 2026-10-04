@@ -1,0 +1,20 @@
+services:
+  experiment:
+    build: .
+    image: vallerand-protocol:latest
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./paper:/app/paper
+    environment:
+      - ZENODO_TOKEN=${ZENODO_TOKEN:-}
+    command: ["python", "-m", "src.main", "--n", "10", "--out", "results"]
+
+  dashboard:
+    build: .
+    image: vallerand-protocol:latest
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./results:/app/results
+    command: ["streamlit", "run", "dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0"]

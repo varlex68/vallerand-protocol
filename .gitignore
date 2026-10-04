@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Data & results
+data/*
+!data/.gitkeep
+results/*
+!results/.gitkeep
+dist/
+
+# Model cache
+.cache/
+models/
+
+# LaTeX
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.toc
+paper/*.pdf
+paper/*.bbl
+paper/*.blg
+
+# Streamlit
+.streamlit/
+
+# OS
+.DS_Store
+Thumbs.db
