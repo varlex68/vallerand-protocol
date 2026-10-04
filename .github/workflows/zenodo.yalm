@@ -1,0 +1,86 @@
+name: Zenodo release upload
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  upload_to_zenodo:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Zenodo token
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: |
+          if [ -z "$ZENODO_TOKEN" ]; then
+            echo "ZENODO_TOKEN secret is missing. Add it in GitHub > Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Create source archive
+        run: |
+          mkdir -p dist
+          tar --exclude=.git \
+              --exclude=.github \
+              --exclude=.venv \
+              --exclude=dist \
+              -czf "dist/${GITHUB_REPOSITORY##*/}-${GITHUB_REF_NAME}.tar.gz" .
+
+      - name: Create Zenodo deposition
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+
+          with open('.zenodo.json', 'r', encoding='utf-8') as f:
+              metadata = json.load(f)
+
+          payload = json.dumps({"metadata": metadata}).encode('utf-8')
+          req = urllib.request.Request(
+              'https://zenodo.org/api/deposit/depositions',
+              data=payload,
+              headers={
+                  'Content-Type': 'application/json',
+                  'Authorization': f"Bearer {os.environ['ZENODO_TOKEN']}"
+              },
+              method='POST'
+          )
+
+          with urllib.request.urlopen(req) as response:
+              body = json.loads(response.read().decode('utf-8'))
+
+          print(f"Zenodo deposition created: {body['id']}")
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as env_file:
+              env_file.write(f"ZENODO_DEPOSITION_ID={body['id']}\n")
+          PY
+
+      - name: Upload archive to Zenodo
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: |
+          ARCHIVE=$(ls dist/*.tar.gz | head -n 1)
+          echo "Uploading $ARCHIVE"
+          curl -sS -X POST \
+            -H "Authorization: Bearer $ZENODO_TOKEN" \
+            -F "file=@${ARCHIVE}" \
+            "https://zenodo.org/api/deposit/depositions/${ZENODO_DEPOSITION_ID}/files"
+
+      - name: Publish Zenodo deposition
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer $ZENODO_TOKEN" \
+            "https://zenodo.org/api/deposit/depositions/${ZENODO_DEPOSITION_ID}/actions/publish"
+
+      - name: Print Zenodo URL
+        run: |
+          echo "Zenodo publication is triggered. Ensure the repository is linked to Zenodo and the secret ZENODO_TOKEN is configured."
