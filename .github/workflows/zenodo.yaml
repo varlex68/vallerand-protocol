@@ -4,10 +4,6 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Release version tag (e.g., v1.0.0)"
-        required: false
 
 jobs:
   publish-to-zenodo:
@@ -18,8 +14,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -31,17 +25,13 @@ jobs:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
         run: |
           if [ -z "$ZENODO_TOKEN" ]; then
-            echo "ERROR: ZENODO_TOKEN secret is missing"
-            echo "Add it in: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "ERROR: missing ZENODO_TOKEN"
             exit 1
           fi
-          echo "✓ ZENODO_TOKEN configured"
 
-      - name: Create source archive
+      - name: Create archive
         run: |
           mkdir -p dist
-          VERSION="${{ github.ref_name }}"
-          ARCHIVE_NAME="vallerand-protocol-${VERSION}.tar.gz"
           tar --exclude=.git \
               --exclude=.github \
               --exclude=.venv \
@@ -50,82 +40,46 @@ jobs:
               --exclude=.pytest_cache \
               --exclude=.mypy_cache \
               --exclude=.ruff_cache \
-              -czf "dist/${ARCHIVE_NAME}" .
-          echo "ARCHIVE_NAME=${ARCHIVE_NAME}" >> $GITHUB_ENV
-          ls -lh dist/
+              -czf dist/vallerand-protocol.tar.gz .
 
       - name: Create Zenodo deposition
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
         run: |
           python3 <<'PY'
-          import json
-          import os
-          import urllib.request
-          import urllib.error
-
-          try:
-              with open('.zenodo.json', 'r', encoding='utf-8') as f:
-                  metadata = json.load(f)
-
-              payload = json.dumps({"metadata": metadata}).encode('utf-8')
-              headers = {
+          import json, os, urllib.request
+          with open('.zenodo.json', 'r', encoding='utf-8') as f:
+              metadata = json.load(f)
+          payload = json.dumps({"metadata": metadata}).encode('utf-8')
+          req = urllib.request.Request(
+              'https://zenodo.org/api/deposit/depositions',
+              data=payload,
+              headers={
                   'Content-Type': 'application/json',
                   'Authorization': f"Bearer {os.environ['ZENODO_TOKEN']}"
-              }
-
-              req = urllib.request.Request(
-                  'https://zenodo.org/api/deposit/depositions',
-                  data=payload,
-                  headers=headers,
-                  method='POST'
-              )
-
-              with urllib.request.urlopen(req) as response:
-                  body = json.loads(response.read().decode('utf-8'))
-
-              deposition_id = body['id']
-              print(f"✓ Zenodo deposition created: {deposition_id}")
-
-              with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as env_file:
-                  env_file.write(f"ZENODO_DEPOSITION_ID={deposition_id}\n")
-
-          except urllib.error.HTTPError as e:
-              error_body = e.read().decode('utf-8')
-              print(f"HTTP {e.code}: {error_body}")
-              raise
-          except Exception as e:
-              print(f"ERROR: {e}")
-              raise
+              },
+              method='POST'
+          )
+          with urllib.request.urlopen(req) as response:
+              body = json.loads(response.read().decode('utf-8'))
+          print(body['id'])
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as env_file:
+              env_file.write(f"ZENODO_DEPOSITION_ID={body['id']}\n")
           PY
 
-      - name: Upload archive to Zenodo
+      - name: Upload archive
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
         run: |
-          ARCHIVE="dist/${{ env.ARCHIVE_NAME }}"
-          if [ ! -f "$ARCHIVE" ]; then
-            echo "ERROR: Archive not found at $ARCHIVE"
-            exit 1
-          fi
-
-          echo "Uploading $ARCHIVE to Zenodo..."
           curl -sS -X POST \
             -H "Authorization: Bearer $ZENODO_TOKEN" \
-            -F "file=@${ARCHIVE}" \
-            "https://zenodo.org/api/deposit/depositions/${ZENODO_DEPOSITION_ID}/files" \
-            || { echo "ERROR: Upload failed"; exit 1; }
+            -F "file=@dist/vallerand-protocol.tar.gz" \
+            "https://zenodo.org/api/deposit/depositions/${ZENODO_DEPOSITION_ID}/files"
 
-          echo "✓ Archive uploaded"
-
-      - name: Publish Zenodo deposition
+      - name: Publish deposition
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
         run: |
-          echo "Publishing deposition ${ZENODO_DEPOSITION_ID}..."
           curl -sS -X POST \
             -H "Authorization: Bearer $ZENODO_TOKEN" \
-            "https://zenodo.org/api/deposit/depositions/${ZENODO_DEPOSITION_ID}/actions/publish" \
-            || { echo "ERROR: Publication failed"; exit 1; }
-
-          echo "✓ Deposition published successfully"
+            "https://zenodo.org/api/deposit/depositions/${ZENODO_DEPOSITION_ID}/actions/publish"
