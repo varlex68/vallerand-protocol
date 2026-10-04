@@ -21,7 +21,7 @@ This repository contains the complete open-science pipeline:
 ## Quick start
 
 ```bash
-git clone <repo>
+git clone <[repo](https://github.com/varlex68/vallerand-protocol)>
 cd vallerand-protocol
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
