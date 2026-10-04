@@ -1,0 +1,78 @@
+name: Publish to Zenodo
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Create archive
+        run: |
+          mkdir -p dist
+          tar -czf "dist/vallerand-protocol-${GITHUB_REF_NAME}.tar.gz" \
+            --exclude=.git \
+            --exclude=.venv \
+            --exclude=__pycache__ \
+            --exclude=.pytest_cache \
+            --exclude=.github \
+            .
+
+      - name: Upload to Zenodo
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: |
+          python - <<'PY'
+          import os
+          import requests
+
+          token = os.environ["ZENODO_TOKEN"]
+          version = os.environ["GITHUB_REF_NAME"]
+          artifact = f"dist/vallerand-protocol-{version}.tar.gz"
+
+          headers = {"Authorization": f"Bearer {token}"}
+
+          r = requests.post(
+              "https://zenodo.org/api/deposit/depositions",
+              headers=headers,
+              json={}
+          )
+          r.raise_for_status()
+          deposition_id = r.json()["id"]
+
+          with open(artifact, "rb") as f:
+              files = {"file": f}
+              r = requests.post(
+                  f"https://zenodo.org/api/deposit/depositions/{deposition_id}/files",
+                  headers=headers,
+                  files=files,
+              )
+          r.raise_for_status()
+
+          r = requests.post(
+              f"https://zenodo.org/api/deposit/depositions/{deposition_id}/actions/publish",
+              headers=headers,
+          )
+          r.raise_for_status()
+
+          data = r.json()
+          print(f"Zenodo publication succeeded. DOI: {data.get('doi', 'unknown')}")
+          PY
