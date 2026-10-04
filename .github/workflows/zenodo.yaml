@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g., v1.0.0)'
+        description: "Release version tag (e.g., v1.0.0)"
         required: false
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Validate Zenodo token
         env:
@@ -35,14 +35,13 @@ jobs:
             echo "Add it in: https://github.com/${{ github.repository }}/settings/secrets/actions"
             exit 1
           fi
-          echo "✓ ZENODO_TOKEN is configured"
+          echo "✓ ZENODO_TOKEN configured"
 
       - name: Create source archive
-        env:
-          RELEASE_VERSION: ${{ github.event.inputs.version || github.ref_name }}
         run: |
           mkdir -p dist
-          ARCHIVE_NAME="vallerand-protocol-${RELEASE_VERSION}.tar.gz"
+          VERSION="${{ github.ref_name }}"
+          ARCHIVE_NAME="vallerand-protocol-${VERSION}.tar.gz"
           tar --exclude=.git \
               --exclude=.github \
               --exclude=.venv \
@@ -52,14 +51,14 @@ jobs:
               --exclude=.mypy_cache \
               --exclude=.ruff_cache \
               -czf "dist/${ARCHIVE_NAME}" .
-          echo "ARCHIVE_NAME=${ARCHIVE_NAME}" >> "$GITHUB_ENV"
+          echo "ARCHIVE_NAME=${ARCHIVE_NAME}" >> $GITHUB_ENV
           ls -lh dist/
 
       - name: Create Zenodo deposition
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
         run: |
-          python3 <<'PYTHON_EOF'
+          python3 <<'PY'
           import json
           import os
           import urllib.request
@@ -98,13 +97,13 @@ jobs:
           except Exception as e:
               print(f"ERROR: {e}")
               raise
-          PYTHON_EOF
+          PY
 
       - name: Upload archive to Zenodo
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
         run: |
-          ARCHIVE="dist/${ARCHIVE_NAME}"
+          ARCHIVE="dist/${{ env.ARCHIVE_NAME }}"
           if [ ! -f "$ARCHIVE" ]; then
             echo "ERROR: Archive not found at $ARCHIVE"
             exit 1
@@ -129,8 +128,4 @@ jobs:
             "https://zenodo.org/api/deposit/depositions/${ZENODO_DEPOSITION_ID}/actions/publish" \
             || { echo "ERROR: Publication failed"; exit 1; }
 
-          echo "✓ Deposition published"
-
-      - name: Final output
-        run: |
-          echo "Release published to Zenodo"
+          echo "✓ Deposition published successfully"
